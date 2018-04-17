@@ -1,7 +1,8 @@
 var mysql = require("mysql");
-var inquirer = require("inquirer");
-var cTable = require("cTable");
+var inq = require("inquirer");
+var ctable = require("console.table");
 
+// loading libraries
 var connection = mysql.createConnection({
     host: "localhost",
     port: 3306,
@@ -11,104 +12,88 @@ var connection = mysql.createConnection({
   });
 
 
-
-  connection.connect(function (error) {
-    if (error) throw error;
-    console.log("connected as id " + connection.threadId);
-    displayProducts();
+// establishing connection 
+  connection.connect(function (err) {
+    if (err) throw err;
+    afterConnection();
 });
 
+function afterConnection(){
+  console.log("connection successful!");
+  listProducts();
+}
+
+function listProducts(){
+  var query = connection.query("SELECT * FROM products", function(err, data){
+      if(err) throw err;
+      console.log("");
+    console.table(data);
+    console.log("");
+      // execute inquirer:
+      selectId();
+});
+}
+
+function selectId(){
+  console.log("");
+  inq.prompt([
+
+    {
+    name: "Id",
+    message: "Input the ID of the item you would like to buy:",
+    type: "input"
+  },
+  {
+    name: "quantity",
+    message: "How many items you would like to buy",
+    type: "input"
+  }
 
 
+]).then(function(data){
+      console.log(data.Id);
+      console.log(data.quantity);
+
+      var pId = data.Id;
+      var pQty = data.quantity; // user asks for qty
+      // get qty from sqll
+
+      // select all from sql with ID/qty
+      var query = "SELECT * FROM products WHERE item_id=" + pId;
+      connection.query(query, function(err,data2){
+
+        // incorrect id:
+        var num = data2.length;
+        // if(num>){
 
 
-// // connect to the mysql server and sql database
-// connection.connect(function(err) {
-//     if (err) throw err;
-//     // run the start function after the connection is made to prompt the user
-//     start();
-//   });
+          // console.log(data2);
+          var qtyLeft = data2[0].stock_quantity; // qty remaining
+            if(qtyLeft >= pQty){
 
+              var totalCost = data2[0].price * pQty; // total cost of order
+              // good to go
+              var newQty = qtyLeft - pQty;
+              // update sql with new qty
 
-  // start prompt: ask user ID of product they are interested in buying
-  
-  // second prompt: ask how many units of this product they would like to buy.
+              var query2 = "UPDATE products SET stock_quantity =" + newQty + " WHERE item_id=" + pId; 
+              connection.query(query2, function(err, data3){
+                  if(err) throw err;
+                  console.log("Order complete!");
+                  console.log("Total order cost is: "+  data2[0].product_name + " $" + totalCost);
 
-  // once customer provides info/places order, check current stock data to confirm enough qty is available.
- 
-        // if not enough inventory, app logs a phrase 'Insufficient quantity!', prevents order from going thru
-
-        // if enough inventory available, fulfill customer's order:
-            // updating SQL database to reflect the remaining qty.
-            // once update goes thru, show the customer the total cost of their purchase. 
-
-
-
-            // function runSearch() {
-            //     inquirer
-            //       .prompt({
-            //         name: "action",
-            //         type: "rawlist",
-            //         message: "What would you like to do?",
-            //         choices: [
-            //           "Find songs by artist",
-            //           "Find all artists who appear more than once",
-            //           "Find data within a specific range",
-            //           "Search for a specific song",
-            //           "Find artists with a top song and top album in the same year"
-            //         ]
-            //       })
-            //       .then(function(answer) {
-            //         switch (answer.action) {
-            //         case "Find songs by artist":
-            //           artistSearch();
-            //           break;
+                  listProducts();
+                });
               
-            //         case "Find all artists who appear more than once":
-            //           multiSearch();
-            //           break;
-              
-            //         case "Find data within a specific range":
-            //           rangeSearch();
-            //           break;
-              
-            //         case "Search for a specific song":
-            //           songSearch();
-            //           break;
-              
-            //         case "Find artists with a top song and top album in the same year":
-            //           songAndAlbumSearch();
-            //           break;
-            //         }
-            //       });
-            //   }
+            }else{
+              // insufficient qty
+              console.log("\nInsufficient quantity!\n");
+            }
+      });
 
+      listProducts();
+  });
+}
 
-
-
-// var start = function(){
-//     inquirer.prompt({
-//       name:"productChoice",
-//       type:"input",
-//       message:"What is the ID of the product you would like to buy?",
-//       choices:["POST","BID"]
-//     })
-
-//     var start = function(){
-//         inquirer.prompt({
-//           name:"quantity",
-//           type:"input",
-//           message:"How many units of this item would you like to buy?",
-//           choices:["POST","BID"]
-//         }).then(function(answer){
-//           if(answer.postOrBid.toUpperCase()=="POST"){
-//             postAuction();
-//           } else {
-//             bidAuction();
-//           }
-//         })
-//       }
-
-//   }
 
  
